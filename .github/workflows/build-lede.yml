@@ -1,0 +1,71 @@
+name: Build LEDE Firmware
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 600
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt full-upgrade -y
+          sudo apt install -qq -y ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
+            bzip2 ccache clang cmake cpio curl device-tree-compiler flex gawk gcc-multilib g++-multilib gettext \
+            genisoimage git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev \
+            libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev \
+            libreadline-dev libssl-dev libtool llvm lrzsz libnsl-dev ninja-build p7zip p7zip-full patch pkgconf \
+            python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion \
+            swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
+
+      - name: Clone LEDE source code
+        run: |
+          git clone --depth 1 https://github.com/coolsnowwolf/lede.git lede-build
+        working-directory: ${{ github.workspace }}
+
+      - name: Copy config file
+        run: |
+          cp .config lede-build/.config
+        working-directory: ${{ github.workspace }}
+
+      - name: Update package feeds
+        run: |
+          cd lede-build
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Configure build
+        run: |
+          cd lede-build
+          make defconfig
+
+      - name: Build firmware
+        run: |
+          cd lede-build
+          make download -j$(nproc)
+          make -j$(nproc) V=s
+
+      - name: Find firmware files
+        id: find-files
+        run: |
+          cd lede-build
+          # Find all image files
+          echo "firmware_files=$(find ./bin/targets -name '*.bin' -o -name '*.img' -o -name '*.tar.gz' | tr '\n' ',')" >> $GITHUB_OUTPUT
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lede-firmware
+          path: |
+            lede-build/bin/targets/**/*
+          retention-days: 30
