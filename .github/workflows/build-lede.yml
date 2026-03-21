@@ -38,7 +38,7 @@ jobs:
 
       - name: Load custom feeds
         run: |
-          [ -e lede-feeds.conf.default ] && cp lede-feeds.conf.default lede-build/feeds.conf.default
+          [ -e lede-feeds.conf.default ] && cp -f lede-feeds.conf.default lede-build/feeds.conf.default
           chmod +x lede-feed.sh
           cd lede-build
           $GITHUB_WORKSPACE/lede-feed.sh

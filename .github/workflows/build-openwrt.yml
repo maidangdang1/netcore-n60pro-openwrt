@@ -34,7 +34,7 @@ jobs:
 
       - name: Load custom feeds
         run: |
-          [ -e openwrt-feeds.conf.default ] && cp openwrt-feeds.conf.default openwrt-build/feeds.conf.default
+          [ -e openwrt-feeds.conf.default ] && cp -f openwrt-feeds.conf.default openwrt-build/feeds.conf.default
           chmod +x openwrt-feed.sh
           cd openwrt-build
           $GITHUB_WORKSPACE/openwrt-feed.sh
