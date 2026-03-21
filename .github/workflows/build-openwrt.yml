@@ -5,6 +5,9 @@ on:
     branches:
       - master
       - main
+    paths:
+      - '.openwrt-config'
+      - 'openwrt-feeds.conf.default'
   workflow_dispatch:
 
 jobs:
@@ -20,7 +23,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt full-upgrade -y
-          sudo apt install -qq -y build-essential clang flex bison g++ gawk \
+          sudo apt install -qq -y bison build-essential clang flex g++ gawk \
             gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev \
             python3-setuptools rsync swig unzip zlib1g-dev file wget
 
@@ -29,27 +32,48 @@ jobs:
           git clone https://github.com/openwrt/openwrt.git openwrt-build
         working-directory: ${{ github.workspace }}
 
-      - name: Copy config file
+      - name: Load custom feeds
         run: |
-          cp .openwrt-config openwrt-build/.config
-        working-directory: ${{ github.workspace }}
+          [ -e openwrt-feeds.conf.default ] && cp openwrt-feeds.conf.default openwrt-build/feeds.conf.default
+          chmod +x openwrt-feed.sh
+          cd openwrt-build
+          $GITHUB_WORKSPACE/openwrt-feed.sh
 
       - name: Update package feeds
         run: |
           cd openwrt-build
           ./scripts/feeds update -a
+
+      - name: Install package feeds
+        run: |
+          cd openwrt-build
           ./scripts/feeds install -a
+
+      - name: Copy config file
+        run: |
+          cp .openwrt-config openwrt-build/.config
+        working-directory: ${{ github.workspace }}
+
+      - name: Load custom config
+        run: |
+          chmod +x openwrt-conf.sh
+          cd openwrt-build
+          $GITHUB_WORKSPACE/openwrt-conf.sh
 
       - name: Configure build
         run: |
           cd openwrt-build
           make defconfig
 
-      - name: Build firmware
+      - name: Download packages
         run: |
           cd openwrt-build
           make download -j$(nproc)
-          make -j$(nproc) V=s
+
+      - name: Build firmware
+        run: |
+          cd openwrt-build
+          make -j$(nproc) V=s || make -j1 V=s
 
       - name: Find firmware files
         id: find-files
