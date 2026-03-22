@@ -77,7 +77,7 @@ jobs:
       - name: Build firmware
         run: |
           cd lede-build
-          make -j$(nproc) V=s || make -j1 V=s
+          make -j$(nproc) V=s || make -j$(nproc) V=s || make -j$(nproc) V=s || make -j1 V=s
 
       - name: Find firmware files
         id: find-files
